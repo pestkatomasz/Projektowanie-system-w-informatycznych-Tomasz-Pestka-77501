@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melting Point</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        /* --- RESET --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #e6f7ff, #ccefff);
+            color: #033649;
+            line-height: 1.6;
+            transition: all 0.5s ease;
+        }
+
+        body.dark {
+            background: linear-gradient(to bottom, #0b1d26, #07151c);
+            color: #f1fbff;
+        }
+
+        /* --- NAWIGACJA --- */
+        nav {
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.5s ease;
+        }
+
+        body.dark nav {
+            background: rgba(10, 25, 40, 0.6);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Linki po lewej */
+        .nav-left {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-left a {
+            font-weight: 600;
+            text-decoration: none;
+            padding: 5px 0;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav-left a::after {
+            content: "";
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            border-radius: 1px;
+            transition: 0.3s;
+        }
+
+        .nav-left a:hover::after {
+            width: 100%;
+        }
+
+        body:not(.dark) .nav-left a {
+            color: #033649;
+        }
+
+        body:not(.dark) .nav-left a::after {
+            background: #033649;
+        }
+
+        body.dark .nav-left a {
+            color: #81d4fa;
+        }
+
+        body.dark .nav-left a::after {
+            background: #81d4fa;
+        }
+
+        /* Logo i przycisk po prawej */
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .nav-logo:hover {
+            transform: scale(1.15) rotate(-5deg);
+            border-color: #4fc3f7;
+        }
+
+        body.dark .nav-logo {
+            border-color: #81d4fa;
+        }
+
+        button.theme-toggle {
+            background: #74c0d8;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button.theme-toggle:hover {
+            background: #4fc3f7;
+        }
+
+        body.dark button.theme-toggle {
+            background: #102a33;
+            color: #81d4fa;
+        }
+
+        body.dark button.theme-toggle:hover {
+            background: #81d4fa;
+            color: #0b1d26;
+        }
+
+        /* --- KONTENER --- */
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* --- SEKCJE --- */
+        section {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.5s ease;
+        }
+
+        body.dark section {
+            background: rgba(10, 35, 50, 0.9);
+        }
+
+        h2 {
+            color: #0b4f6c;
+            margin-bottom: 15px;
+            font-size: 1.9rem;
+        }
+
+        body.dark h2 {
+            color: #8fe9ff;
+        }
+
+        img {
+            width: 90%;
+            max-width: 600px;
+            display: block;
+            margin: 15px auto;
+            border-radius: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.5s ease;
+        }
+
+        /* --- WYKRESY --- */
+        .charts {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .chart-container {
+            flex: 1 1 45%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            transition: all 0.5s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        body.dark .chart-container {
+            background: rgba(20, 50, 70, 0.9);
+        }
+
+        .chart-label {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        /* --- MAPA --- */
+        #glacier-map {
+            width: 90%;
+            max-width: 1000px;
+            height: 500px;
+            margin: 0 auto;
+            border-radius: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.5s ease;
+        }
+
+        .leaflet-control.legend {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 10px;
+            line-height: 1.4;
+        }
+
+        body.dark .leaflet-control.legend {
+            background: rgba(20, 50, 70, 0.95);
+            color: white;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            padding: 20px;
+            background: #74c0d8;
+            color: white;
+            text-align: center;
+            font-weight: 600;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.5s ease;
+        }
+
+        body.dark footer {
+            background: #102a33;
+            color: #81d4fa;
+        }
+
+        /* --- PRZYCISK POWROT DO GÓRY --- */
+        #back-to-top {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(77, 171, 247, 0.7);
+            color: white;
+            padding: 12px 14px;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 1000;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        #back-to-top:hover {
+            background: #4fc3f7;
+            transform: scale(1.1);
+        }
+
+        body.dark #back-to-top {
+            background: rgba(129, 212, 250, 0.7);
+            color: #0b1d26;
+        }
+
+        body.dark #back-to-top:hover {
+            background: #81d4fa;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="nav-container">
+            <div class="nav-left">
+                <a href="#czym">Czym jest</a>
+                <a href="#przyczyny">Przyczyny</a>
+                <a href="#skutki">Skutki</a>
+                <a href="#przyszlosc">Przyszłość</a>
+                <a href="#wykresy">Wykresy</a>
+                <a href="#mapa">Mapa lodowców</a>
+            </div>
+            <div class="nav-right">
+                <img src="logo.png" alt="Logo Melting Point" class="nav-logo">
+                <button class="theme-toggle" onclick="toggleTheme()">🌙 / ☀️</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <section id="czym">
+            <h2>Czym jest topnienie lodowców?</h2>
+            <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba" alt="Lodowiec polarny">
+            <p>Topnienie lodowców to proces stopniowego zanikania mas lodu znajdujących się głównie w obszarach górskich
+                oraz na biegunach Ziemi. Zjawisko to zachodzi naturalnie od tysięcy lat, jednak w ostatnich dekadach
+                znacznie przyspieszyło.</p>
+        </section>
+
+        <section id="przyczyny">
+            <h2>Główne przyczyny</h2>
+            <ul>
+                <li>Globalne ocieplenie klimatu</li>
+                <li>Wzrost emisji gazów cieplarnianych</li>
+                <li>Działalność przemysłowa człowieka</li>
+                <li>Wylesianie i urbanizacja</li>
+            </ul>
+        </section>
+
+        <section id="skutki">
+            <h2>Skutki topnienia lodowców</h2>
+            <img src="https://images.unsplash.com/photo-1482192596544-9eb780fc7f66" alt="Topniejące lodowce">
+            <ul>
+                <li>Podnoszenie się poziomu mórz i oceanów</li>
+                <li>Zagrożenie dla obszarów nadmorskich</li>
+                <li>Zmiany w ekosystemach</li>
+                <li>Niedobory wody pitnej w regionach górskich</li>
+            </ul>
+        </section>
+
+        <section id="przyszlosc">
+            <h2>Co nas czeka w przyszłości?</h2>
+            <p>Jeśli tempo topnienia lodowców nie zostanie zahamowane, wiele z nich może całkowicie zniknąć w ciągu
+                najbliższych kilkudziesięciu lat. Kluczowe znaczenie ma ograniczenie emisji CO₂ oraz rozwój odnawialnych
+                źródeł energii.</p>
+        </section>
+
+        <section id="wykresy">
+            <h2>Wykresy</h2>
+            <div class="charts">
+                <div class="chart-container">
+                    <div class="chart-label">Tempo topnienia lodowców (1970–2020)</div>
+                    <canvas id="chart1"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-label">Udział kontynentów w topnieniu lodowców (%)</div>
+                    <canvas id="chart2"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="mapa">
+            <h2>Mapa lodowców</h2>
+            <div id="glacier-map"></div>
+        </section>
+
+    </div>
+
+    <div id="back-to-top" onclick="scrollToTop()">⬆</div>
+
+    <footer>
+        <p>© 2026 | Melting Point. Projekt na zaliczenie "Projektowanie systemów informatycznych" Tomasz Pestka 77501
+        </p>
+    </footer>
+
+    <script>
+        // TRYB CIEMNY
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+
+            chart1.data.datasets[0].backgroundColor = isDark ? '#4fc3f7' : '#74c0d8';
+            chart2.data.datasets[0].backgroundColor = isDark ? '#81d4fa' : '#4dabf7';
+            chart1.update();
+            chart2.update();
+
+            map.eachLayer(layer => {
+                if (layer.options && layer.options.fillColor) {
+                    if (layer.feature) {
+                        layer.setStyle({ fillColor: isDark ? '#00ffff' : '#0077ff' });
+                    } else {
+                        if (layer.options.fillColor === '#0077ff' || layer.options.fillColor === '#00ffff')
+                            layer.setStyle({ fillColor: isDark ? '#00ffff' : '#0077ff' });
+                        if (layer.options.fillColor === '#ff3300' || layer.options.fillColor === '#ff6666')
+                            layer.setStyle({ fillColor: isDark ? '#ff6666' : '#ff3300' });
+                    }
+                }
+            });
+        }
+
+        // WYKRESY
+        const ctx1 = document.getElementById('chart1').getContext('2d');
+        const chart1 = new Chart(ctx1, {
+            type: 'bar',
+            data: { labels: ['1970', '1980', '1990', '2000', '2010', '2020'], datasets: [{ label: 'Tempo topnienia (km³/rok)', data: [300, 400, 550, 700, 850, 1000], backgroundColor: '#74c0d8', borderRadius: 5 }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } }, animation: { duration: 1500, easing: 'easeOutBounce' } }
+        });
+        const ctx2 = document.getElementById('chart2').getContext('2d');
+        const chart2 = new Chart(ctx2, {
+            type: 'bar',
+            data: { labels: ['Antarktyda', 'Grenlandia', 'Ameryka Płn.', 'Europa', 'Azja', 'Afryka'], datasets: [{ label: 'Udział kontynentów (%)', data: [45, 30, 10, 5, 8, 2], backgroundColor: '#4dabf7', borderRadius: 5 }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } }, animation: { duration: 1500, easing: 'easeOutBounce' } }
+        });
+
+        // MAPA LODOWCÓW
+        var map = L.map('glacier-map').setView([60, -50], 3);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+
+        var glaciers = [
+            { name: "Lodowiec Lambert", lat: -70, lng: 70, large: true },
+            { name: "Lodowiec Jakobshavn", lat: 69, lng: -50, large: true },
+            { name: "Lodowiec Siachen", lat: 35, lng: 77, large: false },
+            { name: "Lodowiec Baltoro", lat: 36, lng: 76, large: false },
+            { name: "Lodowiec Aletsch", lat: 46.5, lng: 8, large: false },
+            { name: "Lodowiec Columbia", lat: 60, lng: -140, large: false },
+            { name: "Lodowiec Perito Moreno", lat: -50, lng: -73, large: false },
+            { name: "Lodowiec Fox", lat: -44, lng: 168, large: false },
+            { name: "Lodowiec Athabasca", lat: 52, lng: -117, large: false },
+            { name: "Lodowiec Khumbu", lat: 27.98, lng: 86.93, large: false }
+        ];
+
+        glaciers.forEach(g => {
+            L.circleMarker([g.lat, g.lng], {
+                radius: g.large ? 10 : 6,
+                fillColor: g.large ? '#ff3300' : '#0077ff',
+                color: '#000',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: g.large ? 0.9 : 0.8
+            }).addTo(map).bindPopup(`<b>Lodowiec:</b> ${g.name}`);
+        });
+
+        // LEGEND
+        var legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = '<b>Lodowce</b><br>';
+            div.innerHTML += '<i style="background:#ff3300;width:12px;height:12px;display:inline-block;margin-right:5px;"></i>Największe / Ważne<br>';
+            div.innerHTML += '<i style="background:#0077ff;width:12px;height:12px;display:inline-block;margin-right:5px;"></i>Pozostałe';
+            return div;
+        };
+        legend.addTo(map);
+
+        // POWRÓT DO GÓRY
+        function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('back-to-top');
+            if (window.scrollY > 300) btn.style.display = 'block';
+            else btn.style.display = 'none';
+        });
+    </script>
+</body>
+
+</html>
